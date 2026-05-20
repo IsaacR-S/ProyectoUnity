@@ -1695,9 +1695,9 @@ MonoBehaviour:
   smoothSpeed: 8
   offset: {x: 2, y: 1, z: -10}
   minX: -100
-  maxX: 100
-  minY: -5
-  maxY: 10
+  maxX: 1000
+  minY: -50
+  maxY: 100
 --- !u!1 &595307421
 GameObject:
   m_ObjectHideFlags: 0
