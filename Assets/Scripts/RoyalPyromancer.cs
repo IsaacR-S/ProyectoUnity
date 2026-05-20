@@ -3,8 +3,6 @@ using UnityEngine;
 
 /// <summary>
 /// Pirómante Real — Mini-jefe del Nivel 1.
-/// Estático. Invoca orbes de fuego mágico que persiguen al jugador.
-/// Drop: Núcleo de Llama (llena la cera al máximo).
 /// </summary>
 public class RoyalPyromancer : EnemyBase
 {
@@ -25,19 +23,22 @@ public class RoyalPyromancer : EnemyBase
 
     protected override void Awake()
     {
-        base.Awake();
+        // Configurar stats ANTES del base.Awake()
         maxHealth     = 150;
-        waxDrop       = 0f;
+        waxDrop       = 0f;       // no cera directa — suelta Núcleo de Llama
         contactDamage = 18;
-        moveSpeed     = 0f;
-        player        = GameObject.FindGameObjectWithTag("Player")?.transform;
-        castTimer     = castInterval;
-        currentHealth = maxHealth;
+        moveSpeed     = 0f;       // estático
+
+        base.Awake();
+        player    = GameObject.FindGameObjectWithTag("Player")?.transform;
+        castTimer = castInterval;
     }
 
     protected override void Update()
     {
         if (isDead) return;
+        if (invulnTimer > 0f) invulnTimer -= Time.deltaTime;
+
         rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
 
         CheckPlayer();
@@ -88,10 +89,14 @@ public class RoyalPyromancer : EnemyBase
     {
         isDead = true;
         rb.linearVelocity = Vector2.zero;
+
         if (flameCorePrefab != null)
             Instantiate(flameCorePrefab, transform.position, Quaternion.identity);
-        if (anim != null) anim.SetTrigger("Death");
+
         GameManager.Instance?.RegisterKill();
-        Destroy(gameObject, 1.2f);
+        Debug.Log("[RoyalPyromancer] DERROTADO");
+
+        // Destruir inmediatamente
+        Destroy(gameObject);
     }
 }

@@ -3,57 +3,89 @@ using UnityEngine;
 
 /// <summary>
 /// Guardia Vela — enemigo con llama roja.
-/// Patrulla y dispara proyectiles de fuego cuando detecta al jugador.
-/// Aparece en zonas más cercanas al castillo.
+/// Persigue al jugador, dispara proyectiles cuando lo tiene en rango,
+/// y hace ataque cuerpo a cuerpo si está pegado.
 /// </summary>
 public class CandleGuard : EnemyBase
 {
     [Header("Guardia Vela")]
-    [SerializeField] float    detectionRange   = 8f;
-    [SerializeField] float    attackRange      = 5f;
+    [SerializeField] float    detectionRange   = 10f;
+    [SerializeField] float    attackRange      = 6f;
+    [SerializeField] float    meleeRange       = 1.5f;
+    [SerializeField] float    chaseSpeed       = 3.5f;
+
+    [Header("Disparo (opcional)")]
     [SerializeField] GameObject fireProjectilePrefab;
     [SerializeField] Transform  firePoint;
-    [SerializeField] float    fireRate         = 2.5f;   // segundos entre disparos
+    [SerializeField] float    fireRate         = 2.5f;
     [SerializeField] float    projectileSpeed  = 8f;
-    [SerializeField] int      projectileDamage = 18;     // en cera
+    [SerializeField] int      projectileDamage = 18;
+
+    [Header("Ataque cuerpo a cuerpo")]
+    [SerializeField] int   meleeDamage   = 15;
+    [SerializeField] float meleeCooldown = 1.2f;
 
     Transform player;
     float     fireTimer;
-    bool      playerInRange;
+    float     meleeTimer;
+    bool      playerDetected;
 
     protected override void Awake()
     {
-        base.Awake();
         maxHealth     = 80;
-        waxDrop       = 20f;
+        waxDrop       = 40f;
         contactDamage = 12;
-        player        = GameObject.FindGameObjectWithTag("Player")?.transform;
-        fireTimer     = fireRate;
+
+        base.Awake();
+        player    = GameObject.FindGameObjectWithTag("Player")?.transform;
+        fireTimer = fireRate;
     }
 
     protected override void Update()
     {
         if (isDead) return;
+        if (invulnTimer > 0f) invulnTimer -= Time.deltaTime;
+
+        fireTimer  -= Time.deltaTime;
+        meleeTimer -= Time.deltaTime;
 
         CheckDetection();
-        fireTimer -= Time.deltaTime;
 
-        if (playerInRange)
+        if (!playerDetected)
         {
-            FacePlayer();
+            // No ve al jugador: patrulla normal
+            Patrol();
+            return;
+        }
+
+        // Sí ve al jugador: decide qué hacer según la distancia
+        float dist = Vector2.Distance(transform.position, player.position);
+        FacePlayer();
+
+        if (dist <= meleeRange)
+        {
+            // Muy cerca: ataque cuerpo a cuerpo
+            rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
+            TryMelee();
+        }
+        else if (dist <= attackRange && fireProjectilePrefab != null)
+        {
+            // Distancia media: dispara desde lejos
+            rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
             TryShoot();
         }
         else
         {
-            Patrol();
+            // Lejos: persigue al jugador
+            ChasePlayer();
         }
     }
 
     void CheckDetection()
     {
         if (player == null) return;
-        float dist   = Vector2.Distance(transform.position, player.position);
-        playerInRange = dist <= detectionRange;
+        float dist     = Vector2.Distance(transform.position, player.position);
+        playerDetected = dist <= detectionRange;
     }
 
     void FacePlayer()
@@ -63,17 +95,35 @@ public class CandleGuard : EnemyBase
         float dir = player.position.x > transform.position.x ? 1f : -1f;
         s.x = dir > 0 ? Mathf.Abs(s.x) : -Mathf.Abs(s.x);
         transform.localScale = s;
-        // Frenar mientras ataca
-        rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
+    }
+
+    void ChasePlayer()
+    {
+        if (player == null) return;
+        float dir = player.position.x > transform.position.x ? 1f : -1f;
+        rb.linearVelocity = new Vector2(dir * chaseSpeed, rb.linearVelocity.y);
+    }
+
+    void TryMelee()
+    {
+        if (meleeTimer > 0f) return;
+        if (player == null)  return;
+
+        meleeTimer = meleeCooldown;
+        if (anim != null) anim.SetTrigger("Attack");
+
+        // Verifica que el jugador siga en rango y aplica daño
+        if (Vector2.Distance(transform.position, player.position) <= meleeRange)
+        {
+            WaxSystem ws = player.GetComponent<WaxSystem>();
+            if (ws != null) ws.RemoveWax(meleeDamage);
+            Debug.Log($"[CandleGuard] Ataque cuerpo a cuerpo → {meleeDamage} daño");
+        }
     }
 
     void TryShoot()
     {
-        float dist = Vector2.Distance(transform.position, player.position);
-        if (dist > attackRange)   return;
-        if (fireTimer > 0f)       return;
-        if (fireProjectilePrefab == null) return;
-
+        if (fireTimer > 0f) return;
         fireTimer = fireRate;
         StartCoroutine(ShootRoutine());
     }
@@ -81,29 +131,31 @@ public class CandleGuard : EnemyBase
     IEnumerator ShootRoutine()
     {
         if (anim != null) anim.SetTrigger("Shoot");
-        yield return new WaitForSeconds(0.25f);   // pequeño delay para la animación
+        yield return new WaitForSeconds(0.25f);
 
-        if (player == null) yield break;
+        if (player == null || isDead) yield break;
         Transform origin = firePoint != null ? firePoint : transform;
 
         GameObject proj = Instantiate(fireProjectilePrefab, origin.position, Quaternion.identity);
+        float dir = player.position.x > origin.position.x ? 1f : -1f;
+
         if (proj.TryGetComponent<EnemyFlameProjectile>(out var efp))
         {
-            float dir = player.position.x > origin.position.x ? 1f : -1f;
             efp.Initialize(projectileDamage, dir, projectileSpeed);
         }
         else if (proj.TryGetComponent<Rigidbody2D>(out var prb))
         {
-            float dir = player.position.x > origin.position.x ? 1f : -1f;
             prb.linearVelocity = new Vector2(dir * projectileSpeed, 0f);
         }
     }
 
     void OnDrawGizmosSelected()
     {
-        Gizmos.color = Color.red;
+        Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, detectionRange);
-        Gizmos.color = Color.magenta;
+        Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRange);
+        Gizmos.color = Color.magenta;
+        Gizmos.DrawWireSphere(transform.position, meleeRange);
     }
 }

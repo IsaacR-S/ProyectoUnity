@@ -1,14 +1,14 @@
 using UnityEngine;
 
 /// <summary>
-/// Clase base de todos los enemigos (v2 — con DropTable + flash de daño).
+/// Clase base de todos los enemigos.
 /// </summary>
 public abstract class EnemyBase : MonoBehaviour
 {
     [Header("Stats base")]
     [SerializeField] protected int   maxHealth     = 50;
     [SerializeField] protected float moveSpeed     = 2.5f;
-    [SerializeField] protected float waxDrop       = 12f;
+    [SerializeField] protected float waxDrop       = 25f;   // cera al morir (subido)
     [SerializeField] protected int   contactDamage = 10;
 
     [Header("Patrulla")]
@@ -26,7 +26,7 @@ public abstract class EnemyBase : MonoBehaviour
     protected Rigidbody2D    rb;
     protected Animator       anim;
     protected SpriteRenderer sr;
-    protected DropTable      dropTable;     // opcional
+    protected DropTable      dropTable;
 
     public bool IsDead => isDead;
 
@@ -36,8 +36,14 @@ public abstract class EnemyBase : MonoBehaviour
         anim          = GetComponent<Animator>();
         sr            = GetComponent<SpriteRenderer>();
         dropTable     = GetComponent<DropTable>();
-        currentHealth = maxHealth;
         startX        = transform.position.x;
+    }
+
+    // Start corre DESPUÉS que todos los Awake — aquí asignamos vida
+    // para que las subclases puedan cambiar maxHealth en su Awake sin bugs
+    protected virtual void Start()
+    {
+        currentHealth = maxHealth;
     }
 
     protected virtual void Update()
@@ -72,6 +78,8 @@ public abstract class EnemyBase : MonoBehaviour
         if (sr != null) StartCoroutine(DamageFlash());
         if (anim != null) anim.SetTrigger("Hit");
 
+        Debug.Log($"[{gameObject.name}] HP: {currentHealth}/{maxHealth}");
+
         if (currentHealth <= 0) Die();
     }
 
@@ -88,21 +96,23 @@ public abstract class EnemyBase : MonoBehaviour
         isDead = true;
         rb.linearVelocity = Vector2.zero;
 
-        // Cera directa al jugador
+        // Cera al jugador
         if (waxDrop > 0f)
         {
             WaxSystem ws = FindAnyObjectByType<WaxSystem>();
             if (ws != null) ws.AddWax(waxDrop);
         }
 
-        // Drops aleatorios via DropTable
+        // Drops aleatorios
         if (dropTable != null)
             dropTable.Roll(transform.position);
 
         GameManager.Instance?.RegisterKill();
 
-        if (anim != null) anim.SetTrigger("Death");
-        Destroy(gameObject, 0.8f);
+        Debug.Log($"[{gameObject.name}] MUERTO — el jugador recibe {waxDrop} cera");
+
+        // Destruir inmediatamente (sin esperar animación)
+        Destroy(gameObject);
     }
 
     protected virtual void OnCollisionEnter2D(Collision2D col)
