@@ -1,40 +1,41 @@
 using UnityEngine;
 
 /// <summary>
-/// Clase base de todos los enemigos.
-/// Hereda de aquí: WaxBeast y CandleGuard.
+/// Clase base de todos los enemigos (v2 — con DropTable + flash de daño).
 /// </summary>
 public abstract class EnemyBase : MonoBehaviour
 {
-    // ── Stats configurables ───────────────────────────────────────────────────
     [Header("Stats base")]
-    [SerializeField] protected int   maxHealth   = 50;
-    [SerializeField] protected float moveSpeed   = 2.5f;
-    [SerializeField] protected float waxDrop     = 12f;   // cera que otorga al morir
-    [SerializeField] protected int   contactDamage = 10;  // daño al tocar al jugador
+    [SerializeField] protected int   maxHealth     = 50;
+    [SerializeField] protected float moveSpeed     = 2.5f;
+    [SerializeField] protected float waxDrop       = 12f;
+    [SerializeField] protected int   contactDamage = 10;
 
-    // ── Patrulla ──────────────────────────────────────────────────────────────
     [Header("Patrulla")]
     [SerializeField] protected float patrolDistance = 4f;
 
-    // ── Estado ────────────────────────────────────────────────────────────────
-    protected int   currentHealth;
-    protected bool  isDead;
-    protected bool  movingRight = true;
-    protected float startX;
+    [Header("Invulnerabilidad post-hit")]
+    [SerializeField] protected float hitInvulnTime = 0.15f;
 
-    // ── Componentes ───────────────────────────────────────────────────────────
-    protected Rigidbody2D rb;
-    protected Animator    anim;
+    protected int    currentHealth;
+    protected bool   isDead;
+    protected bool   movingRight = true;
+    protected float  startX;
+    protected float  invulnTimer;
 
-    // ── Propiedades ───────────────────────────────────────────────────────────
+    protected Rigidbody2D    rb;
+    protected Animator       anim;
+    protected SpriteRenderer sr;
+    protected DropTable      dropTable;     // opcional
+
     public bool IsDead => isDead;
 
-    // ─────────────────────────────────────────────────────────────────────────
     protected virtual void Awake()
     {
         rb            = GetComponent<Rigidbody2D>();
         anim          = GetComponent<Animator>();
+        sr            = GetComponent<SpriteRenderer>();
+        dropTable     = GetComponent<DropTable>();
         currentHealth = maxHealth;
         startX        = transform.position.x;
     }
@@ -42,16 +43,14 @@ public abstract class EnemyBase : MonoBehaviour
     protected virtual void Update()
     {
         if (isDead) return;
+        if (invulnTimer > 0f) invulnTimer -= Time.deltaTime;
         Patrol();
     }
 
-    // ── Patrulla simple ───────────────────────────────────────────────────────
     protected virtual void Patrol()
     {
         float speed = movingRight ? moveSpeed : -moveSpeed;
         rb.linearVelocity = new Vector2(speed, rb.linearVelocity.y);
-
-        // Voltea al llegar al límite de patrulla
         if (movingRight  && transform.position.x >= startX + patrolDistance)  Flip();
         if (!movingRight && transform.position.x <= startX - patrolDistance)  Flip();
     }
@@ -64,33 +63,48 @@ public abstract class EnemyBase : MonoBehaviour
         transform.localScale = s;
     }
 
-    // ── Recibir daño ──────────────────────────────────────────────────────────
     public virtual void TakeDamage(int damage)
     {
-        if (isDead) return;
+        if (isDead || invulnTimer > 0f) return;
         currentHealth -= damage;
+        invulnTimer = hitInvulnTime;
+
+        if (sr != null) StartCoroutine(DamageFlash());
         if (anim != null) anim.SetTrigger("Hit");
 
-        if (currentHealth <= 0)
-            Die();
+        if (currentHealth <= 0) Die();
     }
 
-    // ── Muerte ────────────────────────────────────────────────────────────────
+    System.Collections.IEnumerator DamageFlash()
+    {
+        Color orig = sr.color;
+        sr.color = Color.red;
+        yield return new WaitForSeconds(0.08f);
+        if (sr != null) sr.color = orig;
+    }
+
     protected virtual void Die()
     {
         isDead = true;
         rb.linearVelocity = Vector2.zero;
 
-        // Reponer cera al jugador
-        WaxSystem ws = FindFirstObjectByType<WaxSystem>();
-        if (ws != null)
-            ws.AddWax(waxDrop);
+        // Cera directa al jugador
+        if (waxDrop > 0f)
+        {
+            WaxSystem ws = FindAnyObjectByType<WaxSystem>();
+            if (ws != null) ws.AddWax(waxDrop);
+        }
+
+        // Drops aleatorios via DropTable
+        if (dropTable != null)
+            dropTable.Roll(transform.position);
+
+        GameManager.Instance?.RegisterKill();
 
         if (anim != null) anim.SetTrigger("Death");
-        Destroy(gameObject, 0.8f);  // tiempo para que termine la animación de muerte
+        Destroy(gameObject, 0.8f);
     }
 
-    // ── Daño por contacto ─────────────────────────────────────────────────────
     protected virtual void OnCollisionEnter2D(Collision2D col)
     {
         if (col.gameObject.CompareTag("Player"))
