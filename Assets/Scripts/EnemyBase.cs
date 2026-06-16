@@ -8,7 +8,7 @@ public abstract class EnemyBase : MonoBehaviour
     [Header("Stats base")]
     [SerializeField] protected int   maxHealth     = 50;
     [SerializeField] protected float moveSpeed     = 2.5f;
-    [SerializeField] protected float waxDrop       = 25f;   // cera al morir (subido)
+    [SerializeField] protected float waxDrop       = 25f;
     [SerializeField] protected int   contactDamage = 10;
 
     [Header("Patrulla")]
@@ -16,6 +16,12 @@ public abstract class EnemyBase : MonoBehaviour
 
     [Header("Invulnerabilidad post-hit")]
     [SerializeField] protected float hitInvulnTime = 0.15f;
+
+    [Header("Screen shake")]
+    [SerializeField] protected float hitShakeIntensity   = 0.08f;
+    [SerializeField] protected float hitShakeDuration    = 0.1f;
+    [SerializeField] protected float deathShakeIntensity = 0.2f;
+    [SerializeField] protected float deathShakeDuration  = 0.25f;
 
     protected int    currentHealth;
     protected bool   isDead;
@@ -32,15 +38,13 @@ public abstract class EnemyBase : MonoBehaviour
 
     protected virtual void Awake()
     {
-        rb            = GetComponent<Rigidbody2D>();
-        anim          = GetComponent<Animator>();
-        sr            = GetComponent<SpriteRenderer>();
-        dropTable     = GetComponent<DropTable>();
-        startX        = transform.position.x;
+        rb        = GetComponent<Rigidbody2D>();
+        anim      = GetComponent<Animator>();
+        sr        = GetComponent<SpriteRenderer>();
+        dropTable = GetComponent<DropTable>();
+        startX    = transform.position.x;
     }
 
-    // Start corre DESPUÉS que todos los Awake — aquí asignamos vida
-    // para que las subclases puedan cambiar maxHealth en su Awake sin bugs
     protected virtual void Start()
     {
         currentHealth = maxHealth;
@@ -78,6 +82,9 @@ public abstract class EnemyBase : MonoBehaviour
         if (sr != null) StartCoroutine(DamageFlash());
         if (anim != null) anim.SetTrigger("Hit");
 
+        // Shake suave al golpear al enemigo
+        CameraFollow.Instance?.Shake(hitShakeIntensity, hitShakeDuration);
+
         Debug.Log($"[{gameObject.name}] HP: {currentHealth}/{maxHealth}");
 
         if (currentHealth <= 0) Die();
@@ -96,22 +103,21 @@ public abstract class EnemyBase : MonoBehaviour
         isDead = true;
         rb.linearVelocity = Vector2.zero;
 
-        // Cera al jugador
         if (waxDrop > 0f)
         {
             WaxSystem ws = FindAnyObjectByType<WaxSystem>();
             if (ws != null) ws.AddWax(waxDrop);
         }
 
-        // Drops aleatorios
         if (dropTable != null)
             dropTable.Roll(transform.position);
 
         GameManager.Instance?.RegisterKill();
 
-        Debug.Log($"[{gameObject.name}] MUERTO — el jugador recibe {waxDrop} cera");
+        // Shake más fuerte al matar enemigo
+        CameraFollow.Instance?.Shake(deathShakeIntensity, deathShakeDuration);
 
-        // Destruir inmediatamente (sin esperar animación)
+        Debug.Log($"[{gameObject.name}] MUERTO — el jugador recibe {waxDrop} cera");
         Destroy(gameObject);
     }
 
