@@ -80,6 +80,7 @@ public class PlayerCombat : MonoBehaviour
         anim.SetTrigger("Attack");
 
         Collider2D[] hits = Physics2D.OverlapCircleAll(attackPoint.position, attackRadius, enemyLayer);
+        AudioManager.Instance?.PlaySFX(AudioManager.Instance.sfxSword);
         foreach (var hit in hits)
         {
             if (hit.TryGetComponent<EnemyBase>(out var enemy))
@@ -101,6 +102,7 @@ public class PlayerCombat : MonoBehaviour
         anim.SetTrigger("Pulse");
 
         Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, pulseRadius, enemyLayer);
+        AudioManager.Instance?.PlaySFX(AudioManager.Instance.sfxFire);
         foreach (var hit in hits)
         {
             if (hit.TryGetComponent<EnemyBase>(out var enemy))
@@ -134,6 +136,7 @@ public class PlayerCombat : MonoBehaviour
 
         float dir = controller.FacingRight ? 1f : -1f;
         GameObject proj = Instantiate(flamePrefab, attackPoint.position, Quaternion.identity);
+        AudioManager.Instance?.PlaySFX(AudioManager.Instance.sfxFire);
         if (proj.TryGetComponent<FlameProjectile>(out var fp))
         {
             fp.Initialize(Mathf.RoundToInt(25 * damageMultiplier), dir, flameSpeed, enemyLayer);

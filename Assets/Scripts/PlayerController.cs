@@ -108,6 +108,7 @@ public class PlayerController : MonoBehaviour
             {
                 rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
                 jumpsLeft--;
+                AudioManager.Instance?.PlaySFX(AudioManager.Instance.sfxJump);
                 anim.SetTrigger("Jump");
             }
         }
@@ -120,6 +121,7 @@ public class PlayerController : MonoBehaviour
         if (isDashing)
         {
             dashTimer -= Time.deltaTime;
+            AudioManager.Instance?.PlaySFX(AudioManager.Instance.sfxDash);
             if (dashTimer <= 0f)
             {
                 isDashing = false;

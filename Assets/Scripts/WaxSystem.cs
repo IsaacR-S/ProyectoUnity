@@ -2,18 +2,18 @@ using UnityEngine;
 using UnityEngine.Events;
 
 /// <summary>
-/// Sistema de Cera — corazón de Candle Fury.
+/// Sistema de Cera — corazón de Candle Fury. (con shake + AUDIO)
 /// </summary>
 public class WaxSystem : MonoBehaviour
 {
     [Header("Cera")]
     [SerializeField] float maxWax            = 100f;
-    [SerializeField] float waxDrainPerSecond = 4f;
+    [SerializeField] float waxDrainPerSecond = 3.5f;
 
     [Header("Llama (multiplicador de consumo)")]
     [SerializeField] float flameMultiplier = 3f;
 
-    [Header("Screen shake al recibir daño")]
+    [Header("Screen shake")]
     [SerializeField] float damageShakeIntensity = 0.15f;
     [SerializeField] float damageShakeDuration  = 0.2f;
     [SerializeField] float deathShakeIntensity  = 0.4f;
@@ -42,10 +42,10 @@ public class WaxSystem : MonoBehaviour
     {
         if (IsDead || drainPaused) return;
         float drain = waxDrainPerSecond * (useFireDrain ? flameMultiplier : 1f);
-        // Drenaje pasivo NO dispara shake (solo daño real)
         ApplyDrain(drain * Time.deltaTime);
     }
 
+    // Drenaje pasivo — NO dispara sonido ni shake
     void ApplyDrain(float amount)
     {
         if (IsDead) return;
@@ -59,6 +59,9 @@ public class WaxSystem : MonoBehaviour
         if (IsDead) return;
         currentWax = Mathf.Min(currentWax + amount, maxWax);
         OnWaxChanged?.Invoke(currentWax, maxWax);
+
+        // Sonido de recoger cera
+        AudioManager.Instance?.PlaySFX(AudioManager.Instance.sfxPickup);
     }
 
     public void RemoveWax(float amount)
@@ -67,10 +70,12 @@ public class WaxSystem : MonoBehaviour
         currentWax = Mathf.Max(currentWax - amount, 0f);
         OnWaxChanged?.Invoke(currentWax, maxWax);
 
-        // Shake cuando el jugador recibe daño real (no por drenaje pasivo)
-        // Solo si el daño es significativo (>1) para no shake-ar por el drain de fuego
+        // Shake + sonido cuando el jugador recibe daño real (no por drenaje pasivo)
         if (amount > 1f)
+        {
             CameraFollow.Instance?.Shake(damageShakeIntensity, damageShakeDuration);
+            AudioManager.Instance?.PlaySFX(AudioManager.Instance.sfxPlayerHurt);
+        }
 
         if (currentWax <= 0f) Die();
     }
@@ -90,8 +95,10 @@ public class WaxSystem : MonoBehaviour
         currentWax = 0f;
         Debug.Log("[WaxSystem] GAME OVER — La cera se agotó.");
 
-        // Shake dramático al morir
         CameraFollow.Instance?.Shake(deathShakeIntensity, deathShakeDuration);
+        AudioManager.Instance?.PlaySFX(AudioManager.Instance.sfxGameOver);
+        if (AudioManager.Instance != null && AudioManager.Instance.musicGameOver != null)
+            AudioManager.Instance.PlayMusic(AudioManager.Instance.musicGameOver);
 
         OnDeath?.Invoke();
     }
