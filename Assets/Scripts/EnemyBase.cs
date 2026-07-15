@@ -82,8 +82,9 @@ public abstract class EnemyBase : MonoBehaviour
         if (sr != null) StartCoroutine(DamageFlash());
         if (anim != null) anim.SetTrigger("Hit");
 
-        // Shake suave al golpear al enemigo
+        // Shake suave + sonido al golpear al enemigo
         CameraFollow.Instance?.Shake(hitShakeIntensity, hitShakeDuration);
+        AudioManager.Instance?.PlaySFX(AudioManager.Instance.sfxHitEnemy);
 
         Debug.Log($"[{gameObject.name}] HP: {currentHealth}/{maxHealth}");
 
@@ -103,10 +104,18 @@ public abstract class EnemyBase : MonoBehaviour
         isDead = true;
         rb.linearVelocity = Vector2.zero;
 
+        // Combo: cada kill seguida sube el multiplicador de cera (x1→x1.5→x2→x3)
+        float comboMult = 1f;
+        if (ComboSystem.Instance != null)
+        {
+            ComboSystem.Instance.RegisterKill();
+            comboMult = ComboSystem.Instance.CurrentMultiplier;
+        }
+
         if (waxDrop > 0f)
         {
             WaxSystem ws = FindAnyObjectByType<WaxSystem>();
-            if (ws != null) ws.AddWax(waxDrop);
+            if (ws != null) ws.AddWax(waxDrop * comboMult);
         }
 
         if (dropTable != null)
@@ -114,10 +123,11 @@ public abstract class EnemyBase : MonoBehaviour
 
         GameManager.Instance?.RegisterKill();
 
-        // Shake más fuerte al matar enemigo
+        // Shake más fuerte + sonido al matar enemigo
         CameraFollow.Instance?.Shake(deathShakeIntensity, deathShakeDuration);
+        AudioManager.Instance?.PlaySFX(AudioManager.Instance.sfxEnemyDeath);
 
-        Debug.Log($"[{gameObject.name}] MUERTO — el jugador recibe {waxDrop} cera");
+        Debug.Log($"[{gameObject.name}] MUERTO — el jugador recibe {waxDrop * comboMult} cera (combo x{comboMult:0.#})");
         Destroy(gameObject);
     }
 

@@ -90,10 +90,15 @@ public class RoyalPyromancer : EnemyBase
         isDead = true;
         rb.linearVelocity = Vector2.zero;
 
+        // Mantiene viva la racha del combo aunque el jefe no suelte cera directa
+        ComboSystem.Instance?.RegisterKill();
+
         if (flameCorePrefab != null)
             Instantiate(flameCorePrefab, transform.position, Quaternion.identity);
 
         GameManager.Instance?.RegisterKill();
+        CameraFollow.Instance?.Shake(deathShakeIntensity, deathShakeDuration);
+        AudioManager.Instance?.PlaySFX(AudioManager.Instance.sfxEnemyDeath);
         Debug.Log("[RoyalPyromancer] DERROTADO");
 
         // Destruir inmediatamente

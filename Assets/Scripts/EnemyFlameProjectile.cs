@@ -10,6 +10,12 @@ public class EnemyFlameProjectile : MonoBehaviour
     int   damage;
     float lifetime = 4f;
 
+    void Awake()
+    {
+        // Luz roja pequeña para verse volar en la oscuridad de Level2
+        ProjectileGlow.Attach(this, new Color(1f, 0.267f, 0.133f), 1f);
+    }
+
     void Update()
     {
         lifetime -= Time.deltaTime;

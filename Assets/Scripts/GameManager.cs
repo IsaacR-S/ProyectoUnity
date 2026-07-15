@@ -80,6 +80,12 @@ public class GameManager : MonoBehaviour
     IEnumerator LoadSceneDelayed(string sceneName, float delay)
     {
         yield return new WaitForSeconds(delay);
-        SceneManager.LoadScene(sceneName);
+
+        // Si la escena no está en Build Settings (GameOver/Win aún no existen),
+        // no intentamos cargarla: el panel del UIManager ya muestra el resultado.
+        if (Application.CanStreamedLevelBeLoaded(sceneName))
+            SceneManager.LoadScene(sceneName);
+        else
+            Debug.LogWarning($"[GameManager] Escena '{sceneName}' no está en Build Settings — se queda el panel de UI.");
     }
 }

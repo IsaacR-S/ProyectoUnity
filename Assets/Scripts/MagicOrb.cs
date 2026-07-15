@@ -19,6 +19,8 @@ public class MagicOrb : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         rb.gravityScale = 0f;
+        // Luz magenta pequeña para verse volar en la oscuridad de Level2
+        ProjectileGlow.Attach(this, new Color(1f, 0.251f, 0.502f), 1f);
     }
 
     public void Initialize(Transform t, int dmg)

@@ -13,7 +13,12 @@ public class FlameProjectile : MonoBehaviour
 
     Rigidbody2D rb;
 
-    void Awake() => rb = GetComponent<Rigidbody2D>();
+    void Awake()
+    {
+        rb = GetComponent<Rigidbody2D>();
+        // Luz azul pequeña para verse volar en la oscuridad de Level2
+        ProjectileGlow.Attach(this, new Color(0.290f, 0.831f, 1f), 1f);
+    }
 
     void Update()
     {

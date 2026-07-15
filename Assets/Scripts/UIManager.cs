@@ -37,7 +37,7 @@ public class UIManager : MonoBehaviour
         if (gameOverPanel != null) gameOverPanel.SetActive(false);
 
         // Suscribirse al WaxSystem del jugador
-        WaxSystem ws = FindFirstObjectByType<WaxSystem>();
+        WaxSystem ws = FindAnyObjectByType<WaxSystem>();
         if (ws != null)
         {
             ws.OnWaxChanged.AddListener(UpdateWaxBar);

@@ -48,6 +48,9 @@ public class PlayerController : MonoBehaviour
     public bool  IsGrounded   => isGrounded;
     public float MoveSpeed    => moveSpeed;
 
+    // Multiplicador temporal de velocidad (lo usa FlameFrenzy al hacer kills)
+    [HideInInspector] public float speedMultiplier = 1f;
+
     // ─────────────────────────────────────────────────────────────────────────
     void Awake()
     {
@@ -95,7 +98,7 @@ public class PlayerController : MonoBehaviour
     // ── Movimiento horizontal ─────────────────────────────────────────────────
     void Move()
     {
-        float speed = isCrouching ? moveSpeed * crouchSpeedMul : moveSpeed;
+        float speed = (isCrouching ? moveSpeed * crouchSpeedMul : moveSpeed) * speedMultiplier;
         rb.linearVelocity = new Vector2(horizontalInput * speed, rb.linearVelocity.y);
     }
 
@@ -121,7 +124,6 @@ public class PlayerController : MonoBehaviour
         if (isDashing)
         {
             dashTimer -= Time.deltaTime;
-            AudioManager.Instance?.PlaySFX(AudioManager.Instance.sfxDash);
             if (dashTimer <= 0f)
             {
                 isDashing = false;
@@ -140,6 +142,7 @@ public class PlayerController : MonoBehaviour
             rb.gravityScale       = 0f;
             float dir             = facingRight ? 1f : -1f;
             rb.linearVelocity           = new Vector2(dir * dashSpeed, 0f);
+            AudioManager.Instance?.PlaySFX(AudioManager.Instance.sfxDash);
             anim.SetTrigger("Dash");
         }
     }

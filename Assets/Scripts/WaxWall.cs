@@ -1,13 +1,13 @@
 using UnityEngine;
 
-// Muro de cera � solo se rompe con habilidades de fuego
+// Muro de cera — INDESTRUCTIBLE por decisión de diseño (Entrega 3):
+// nadie puede destruirlo. El "secreto" detrás del muro se alcanza
+// saltando por encima (doble salto / dash).
 public class WaxWall : MonoBehaviour
 {
-    [SerializeField] int hp = 1;
-
+    // Se mantiene el método por compatibilidad, pero ya no destruye el muro.
     public void HitByFire(int dmg)
     {
-        hp -= dmg;
-        if (hp <= 0) Destroy(gameObject);
+        Debug.Log("[WaxWall] El muro de cera es indestructible.");
     }
 }

@@ -15,18 +15,36 @@ public class ParallaxLayer : MonoBehaviour
     Transform cam;
     Vector3   startPos;
     float     startCamX, startCamY;
+    bool      initialized;
+    int       frames;
 
     void Start()
     {
-        cam       = Camera.main.transform;
-        startPos  = transform.position;
-        startCamX = cam.position.x;
-        startCamY = cam.position.y;
+        if (Camera.main != null) cam = Camera.main.transform;
     }
 
     void LateUpdate()
     {
-        if (cam == null) return;
+        if (cam == null)
+        {
+            if (Camera.main == null) return;
+            cam = Camera.main.transform;
+        }
+
+        // La referencia se captura en el SEGUNDO frame, no en Start():
+        // en el frame 1 CameraFollow todavía no movió la cámara hacia el
+        // player, y capturar antes dejaba el fondo desincronizado.
+        if (!initialized)
+        {
+            frames++;
+            if (frames < 2) return;
+            startPos    = transform.position;
+            startCamX   = cam.position.x;
+            startCamY   = cam.position.y;
+            initialized = true;
+            return;
+        }
+
         float dx = (cam.position.x - startCamX) * parallaxFactor;
         float dy = followY ? (cam.position.y - startCamY) * parallaxFactor : 0f;
         transform.position = new Vector3(startPos.x + dx, startPos.y + dy, startPos.z);
