@@ -10,7 +10,8 @@ using UnityEngine.Rendering.Universal;
 /// </summary>
 public static class ProjectileGlow
 {
-    public static void Attach(MonoBehaviour host, Color color, float radius = 1f)
+    public static void Attach(MonoBehaviour host, Color color, float radius = 1f,
+                              float intensity = 1.2f, bool flicker = false)
     {
         // Si el prefab ya trae una luz configurada a mano, respetarla
         if (host.GetComponentInChildren<Light2D>() != null) return;
@@ -24,6 +25,8 @@ public static class ProjectileGlow
         l.pointLightOuterRadius = radius;
         l.pointLightInnerRadius = 0.1f;
         l.falloffIntensity      = 0.7f;
-        l.intensity             = 1.2f;
+        l.intensity             = intensity;
+
+        if (flicker) go.AddComponent<LightFlicker2D>();
     }
 }
