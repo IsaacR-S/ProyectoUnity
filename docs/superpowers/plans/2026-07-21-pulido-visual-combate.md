@@ -1082,3 +1082,705 @@ git status --short
 # Si hay cambios en Assets/ generados por la sesión manual del usuario:
 git add -A Assets && git commit -m "chore: re-serializacion de escenas tras verificacion en editor"
 ```
+
+---
+
+# Addendum — Tasks 7-10 (espada, onda de fuego, UI)
+
+Spec: secciones 5-8 del addendum en la spec. Mismas Global Constraints (batch Unity,
+Conventional Commits, metas por Unity, convención pixelart, preservar signo de
+`localScale.x`). `$SCRATCH` y `$UNITY` como arriba.
+
+### Task 7: Arte del addendum (borrar espada + anillo de pulso + sprites UI)
+
+**Files:**
+- Create: `$SCRATCH/gen_art2.py` (NO entra al repo)
+- Modify: `Assets/Sprites/Characters/principe_vela.png` (borrar espada dibujada; mismo guid)
+- Create: `Assets/Sprites/Effects/pulse_wave_0.png` … `pulse_wave_2.png` (48×48)
+- Create: `Assets/Sprites/UI/ui_bar_frame.png` (80×10), `ui_bar_fill.png` (4×4), `ui_icon_flame.png` (12×12), `ui_button.png` (32×16)
+
+**Interfaces:**
+- Produces: esos paths exactos; Tasks 9-10 los cargan por nombre. El PNG del player conserva su guid (nada que recablear).
+
+- [ ] **Step 1: Escribir `$SCRATCH/gen_art2.py`**
+
+```python
+#!/usr/bin/env python3
+"""Addendum: borra la espada del príncipe, genera anillo de pulso y sprites UI."""
+import math, random, os
+from PIL import Image, ImageDraw
+
+ROOT = "/Users/isaac_rs/Desktop/ProyectoUnity/Assets/Sprites"
+T    = (0, 0, 0, 0)
+OUT  = (26, 22, 38, 255)
+CYAN = (74, 212, 255, 255)
+CYNL = (191, 247, 255, 255)
+CYND = (30, 120, 200, 255)
+CORE = (255, 255, 255, 255)
+
+def save(img, rel):
+    path = os.path.join(ROOT, rel)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    img.save(path)
+    print(f"  {rel}: {img.size[0]}x{img.size[1]}")
+
+# ── 1. Borrar la espada dibujada del príncipe (región derecha) ────────────
+def erase_sword():
+    p = os.path.join(ROOT, "Characters/principe_vela.png")
+    img = Image.open(p).convert("RGBA")
+    def erase(pred):
+        for y in range(img.height):
+            for x in range(img.width):
+                if pred(x, y): img.putpixel((x, y), T)
+    erase(lambda x, y: x >= 30 and 16 <= y <= 28)   # hoja diagonal
+    erase(lambda x, y: x >= 27 and 26 <= y <= 35)   # empuñadura/mano
+    img.save(p)
+    # reporte: columnas >=26 que sigan teniendo píxeles (deberían ser ninguna en filas 15-40)
+    restos = [(x, y) for y in range(15, 41) for x in range(26, img.width)
+              if img.getpixel((x, y))[3] > 40]
+    print(f"  principe_vela.png: espada borrada; restos en x>=26 filas 15-40: {len(restos)} {restos[:8]}")
+
+# ── 2. Anillo de onda de pulso: 48x48, 3 frames ───────────────────────────
+def pulse_wave(frame):
+    S = 48
+    img = Image.new("RGBA", (S, S), T)
+    rnd = random.Random(300 + frame)
+    cx = cy = 23.5
+    for y in range(S):
+        for x in range(S):
+            ang = math.atan2(y - cy, x - cx)
+            rr = 19.0 + 2.0 * math.sin(3 * ang + frame * 2.1)
+            d = math.hypot(x - cx, y - cy)
+            if rr - 4.5 <= d <= rr:
+                t = (d - (rr - 4.5)) / 4.5     # 0 interior → 1 borde
+                col = CYNL if t < 0.3 else (CYAN if t < 0.75 else CYND)
+                img.putpixel((x, y), col)
+    # chispas exteriores
+    for _ in range(16):
+        a = rnd.uniform(0, 2 * math.pi)
+        r = 21.5 + rnd.uniform(0, 2.0)
+        px, py = int(cx + r * math.cos(a)), int(cy + r * math.sin(a))
+        if 0 <= px < S and 0 <= py < S: img.putpixel((px, py), CYNL)
+    return img
+
+# ── 3. Sprites UI ─────────────────────────────────────────────────────────
+def bar_frame():
+    W, H = 80, 10
+    img = Image.new("RGBA", (W, H), T)
+    d = ImageDraw.Draw(img)
+    d.rectangle([0, 0, W - 1, H - 1], fill=(20, 16, 32, 235), outline=OUT)
+    d.rectangle([1, 1, W - 2, H - 2], outline=(58, 50, 84, 255))   # bisel interior
+    d.line([(2, 2), (W - 3, 2)], fill=(94, 84, 128, 255))          # brillo superior
+    return img
+
+def bar_fill():
+    return Image.new("RGBA", (4, 4), CORE)   # blanco: UIManager lo tiñe
+
+def icon_flame():
+    S = 12
+    img = Image.new("RGBA", (S, S), T)
+    d = ImageDraw.Draw(img)
+    d.polygon([(6, 0), (9, 4), (10, 8), (6, 11), (2, 8), (3, 4)], fill=CYND)
+    d.polygon([(6, 2), (8, 5), (8, 8), (6, 10), (4, 8), (4, 5)], fill=CYAN)
+    d.polygon([(6, 5), (7, 7), (6, 9), (5, 7)], fill=CORE)
+    return img
+
+def button():
+    W, H = 32, 16
+    img = Image.new("RGBA", (W, H), T)
+    d = ImageDraw.Draw(img)
+    d.rectangle([0, 0, W - 1, H - 1], fill=(38, 32, 58, 255), outline=OUT)
+    d.rectangle([1, 1, W - 2, H - 2], outline=(74, 64, 104, 255))
+    d.line([(2, 2), (W - 3, 2)], fill=(120, 108, 160, 255))
+    d.line([(2, H - 3), (W - 3, H - 3)], fill=(28, 24, 44, 255))
+    return img
+
+if __name__ == "__main__":
+    print("Arte del addendum:")
+    erase_sword()
+    for f in range(3):
+        save(pulse_wave(f), f"Effects/pulse_wave_{f}.png")
+    save(bar_frame(), "UI/ui_bar_frame.png")
+    save(bar_fill(), "UI/ui_bar_fill.png")
+    save(icon_flame(), "UI/ui_icon_flame.png")
+    save(button(), "UI/ui_button.png")
+    print("OK")
+```
+
+- [ ] **Step 2: Ejecutar e iterar el borrado**
+
+```bash
+"$SCRATCH/.venv/bin/python" "$SCRATCH/gen_art2.py"
+```
+
+Expected: 7 archivos + línea de `restos: 0`. Después, inspección visual con Read:
+`principe_vela.png` debe verse el príncipe COMPLETO (cabeza-llama cian, cuerpo, capa,
+piernas: columnas 0-25 intactas) y SIN la hoja/empuñadura a la derecha, sin píxeles
+flotantes sueltos. Si quedan restos o se recortó cuerpo, ajustar los dos predicados
+`erase(...)` en ±2 columnas/filas y re-ejecutar (git restore del PNG entre intentos:
+`git checkout -- Assets/Sprites/Characters/principe_vela.png`). Verificar también
+`pulse_wave_0.png` (anillo cian con ondulación) y los 4 UI.
+
+- [ ] **Step 3: Importar en batch y commit**
+
+```bash
+"$UNITY" -batchmode -quit -projectPath /Users/isaac_rs/Desktop/ProyectoUnity -logFile "$SCRATCH/unity_t7.log"; echo "exit=$?"
+grep "error CS" "$SCRATCH/unity_t7.log" || echo "SIN ERRORES"
+git add -A Assets/Sprites
+git commit -m "feat(art): borra espada integrada del principe, anillo de pulso y sprites UI"
+```
+
+---
+
+### Task 8: Espada en guardia permanente
+
+**Files:**
+- Modify: `Assets/Scripts/PlayerAttackArm.cs`
+- Modify: `Assets/Editor/PlayerArmSetup.cs` (una línea)
+- Modify (vía batch): ambas escenas
+
+**Interfaces:**
+- Consumes: `arm_sword`/`arm_cast` ya asignados (Task 4).
+- Produces: brazo con espada SIEMPRE visible en pose de guardia; API pública sin cambios.
+
+- [ ] **Step 1: Modificar `PlayerAttackArm.cs`**
+
+(a) Añadir campo tras `[SerializeField] float pulseTime = 0.25f;`:
+
+```csharp
+    [SerializeField] float guardAngle = -30f;   // pose de guardia en reposo
+```
+
+(b) Reemplazar el cuerpo de `Awake()` por:
+
+```csharp
+    void Awake()
+    {
+        sr = GetComponent<SpriteRenderer>();
+        basePos = transform.localPosition;
+        body    = transform.parent;
+        ResetVisual();   // arranca en guardia con la espada visible
+    }
+```
+
+(c) Reemplazar `ResetVisual()` por (la espada queda visible en guardia; ya no se oculta):
+
+```csharp
+    void ResetVisual()
+    {
+        transform.localPosition = basePos;
+        transform.localRotation = Quaternion.Euler(0f, 0f, guardAngle);
+        if (body != null)
+            body.localScale = new Vector3(Mathf.Sign(body.localScale.x), 1f, 1f);
+        sr.sprite  = swordSprite;
+        sr.enabled = true;
+    }
+```
+
+(d) En `SwordSwing()`, `ShootPunch()` y `PulseRaise()`: las líneas `sr.sprite = ...;`
+y `sr.enabled = true;` del inicio se conservan tal cual (en el swing re-fija la
+espada; en shoot/pulse cambia a la palma y `ResetVisual()` vuelve a la espada).
+
+(e) En `PulseRaise()` la línea `transform.localRotation = Quaternion.Euler(0f, 0f, 90f);`
+no cambia.
+
+- [ ] **Step 2: Modificar `PlayerArmSetup.cs`**
+
+La línea `sr.enabled = false;` pasa a:
+
+```csharp
+            sr.enabled = true;                     // espada visible en guardia (reposo)
+```
+
+(actualizar también el comentario del encabezado del archivo: donde dice "con su
+SpriteRenderer apagado en reposo" debe decir "con la espada visible en pose de guardia").
+
+- [ ] **Step 3: Batch (re-configura escenas) + verificación + commit**
+
+```bash
+"$UNITY" -batchmode -quit -projectPath /Users/isaac_rs/Desktop/ProyectoUnity \
+  -executeMethod PlayerArmSetup.SetupAllScenes -logFile "$SCRATCH/unity_t8.log"; echo "exit=$?"
+grep -E "error CS|Brazo configurado" "$SCRATCH/unity_t8.log"
+grep -c "m_Name: Arm" Assets/Scenes/Level1.unity   # sigue 1
+git add -A Assets/Scripts Assets/Editor Assets/Scenes
+git commit -m "feat(player): espada del overlay visible en pose de guardia"
+```
+
+---
+
+### Task 9: Onda de fuego del pulso (X)
+
+**Files:**
+- Create: `Assets/Scripts/PulseWaveEffect.cs`
+- Create: `Assets/Editor/PulseWaveBuilder.cs`
+- Modify: `Assets/Scripts/PlayerCombat.cs` (campo + instanciación)
+- Create (vía batch): `Assets/Prefabs/PulseWave.prefab`; Modify: ambas escenas
+
+**Interfaces:**
+- Consumes: `pulse_wave_0..2.png` (Task 7); `SpriteFlipbook` (campo `frames`); `PixelSpriteImport.Import`.
+- Produces: prefab `PulseWave.prefab`; campo serializado `pulseWavePrefab` en `PlayerCombat` cableado en ambas escenas.
+
+- [ ] **Step 1: Crear `Assets/Scripts/PulseWaveEffect.cs`**
+
+```csharp
+using UnityEngine;
+
+/// <summary>
+/// Onda expansiva del Pulso de llama: escala el anillo desde startDiameter
+/// hasta endDiameter (= diámetro real del daño del pulso) con fade de alpha,
+/// y se autodestruye. Sin física: es solo feedback visual.
+/// </summary>
+[RequireComponent(typeof(SpriteRenderer))]
+public class PulseWaveEffect : MonoBehaviour
+{
+    [SerializeField] float duration      = 0.35f;
+    [SerializeField] float startDiameter = 0.5f;
+    [SerializeField] float endDiameter   = 6f;    // = pulseRadius 3 × 2
+
+    SpriteRenderer sr;
+    float t;
+
+    void Awake() => sr = GetComponent<SpriteRenderer>();
+
+    void Update()
+    {
+        t += Time.deltaTime;
+        float k = Mathf.Clamp01(t / duration);
+        float eased = Mathf.Sin(k * Mathf.PI * 0.5f);                  // ease-out
+        float diam  = Mathf.Lerp(startDiameter, endDiameter, eased);
+        float spriteDiam = sr.sprite != null ? sr.sprite.bounds.size.x : 1f;
+        float s = diam / spriteDiam;
+        transform.localScale = new Vector3(s, s, 1f);
+
+        Color c = sr.color;
+        c.a = 1f - k;
+        sr.color = c;
+
+        if (k >= 1f) Destroy(gameObject);
+    }
+}
+```
+
+- [ ] **Step 2: Modificar `PlayerCombat.cs`**
+
+(a) En el header del pulso, tras `[SerializeField] float pulseWaxCost = 15f;`:
+
+```csharp
+    [SerializeField] GameObject pulseWavePrefab;     // anillo visual de la onda
+```
+
+(b) En `FlameCheck()`, justo después de `arm?.PlayPulse();`:
+
+```csharp
+        if (pulseWavePrefab != null)
+            Instantiate(pulseWavePrefab, transform.position, Quaternion.identity);
+```
+
+- [ ] **Step 3: Crear `Assets/Editor/PulseWaveBuilder.cs`**
+
+```csharp
+#if UNITY_EDITOR
+using UnityEngine;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine.SceneManagement;
+
+/// <summary>
+/// CANDLE FURY — Construye Assets/Prefabs/PulseWave.prefab (anillo de onda del
+/// Pulso: SpriteRenderer unlit + SpriteFlipbook + PulseWaveEffect) y cablea
+/// PlayerCombat.pulseWavePrefab en la escena. Idempotente.
+/// Entrada batch: -executeMethod PulseWaveBuilder.BuildAndWireAllScenes
+/// </summary>
+public static class PulseWaveBuilder
+{
+    const string SpriteDir  = "Assets/Sprites/Effects/";
+    const string PrefabPath = "Assets/Prefabs/PulseWave.prefab";
+    const string UnlitMaterialPath =
+        "Packages/com.unity.render-pipelines.universal/Runtime/Materials/Sprite-Unlit-Default.mat";
+    const float WorldHeight = 1f;   // 48 px → PPU 48 → anillo de 1u de diámetro base
+
+    static readonly string[] ScenePaths =
+        { "Assets/Scenes/Level1.unity", "Assets/Scenes/Level2.unity" };
+
+    [MenuItem("Candle Fury/Construir Onda de Pulso")]
+    public static void BuildAndWireActiveScene()
+    {
+        if (!BuildPrefab()) return;
+        WireScene();
+        EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+        Debug.Log("Recuerda GUARDAR la escena (Ctrl+S) y repetir en la otra escena.");
+    }
+
+    public static void BuildAndWireAllScenes()
+    {
+        if (!BuildPrefab()) return;
+        foreach (string path in ScenePaths)
+        {
+            var scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
+            WireScene();
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log($"✔ Onda de pulso cableada en {path}");
+        }
+    }
+
+    static bool BuildPrefab()
+    {
+        var sprites = new Sprite[3];
+        for (int i = 0; i < 3; i++)
+        {
+            sprites[i] = PixelSpriteImport.Import($"{SpriteDir}pulse_wave_{i}.png", WorldHeight);
+            if (sprites[i] == null)
+            {
+                Debug.LogError($"[PulseWaveBuilder] FALTA {SpriteDir}pulse_wave_{i}.png");
+                return false;
+            }
+        }
+        var unlit = AssetDatabase.LoadAssetAtPath<Material>(UnlitMaterialPath);
+
+        GameObject root;
+        bool existed = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath) != null;
+        root = existed ? PrefabUtility.LoadPrefabContents(PrefabPath)
+                       : new GameObject("PulseWave");
+        try
+        {
+            var sr = root.GetComponent<SpriteRenderer>();
+            if (sr == null) sr = root.AddComponent<SpriteRenderer>();
+            sr.sprite = sprites[0];
+            sr.color  = Color.white;
+            if (unlit != null) sr.sharedMaterial = unlit;
+            sr.sortingOrder = 5;   // por encima de personajes
+
+            var flip = root.GetComponent<SpriteFlipbook>();
+            if (flip == null) flip = root.AddComponent<SpriteFlipbook>();
+            var so  = new SerializedObject(flip);
+            var arr = so.FindProperty("frames");
+            arr.arraySize = sprites.Length;
+            for (int i = 0; i < sprites.Length; i++)
+                arr.GetArrayElementAtIndex(i).objectReferenceValue = sprites[i];
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            if (root.GetComponent<PulseWaveEffect>() == null)
+                root.AddComponent<PulseWaveEffect>();
+
+            PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
+            Debug.Log("✔ PulseWave.prefab construido");
+            return true;
+        }
+        finally
+        {
+            if (existed) PrefabUtility.UnloadPrefabContents(root);
+            else Object.DestroyImmediate(root);
+        }
+    }
+
+    static void WireScene()
+    {
+        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
+        foreach (var pc in Object.FindObjectsByType<PlayerCombat>(FindObjectsSortMode.None))
+        {
+            var so = new SerializedObject(pc);
+            so.FindProperty("pulseWavePrefab").objectReferenceValue = prefab;
+            so.ApplyModifiedProperties();
+            Debug.Log($"✔ pulseWavePrefab cableado en {pc.gameObject.name}");
+        }
+    }
+}
+#endif
+```
+
+- [ ] **Step 4: Batch + verificación + commit**
+
+```bash
+"$UNITY" -batchmode -quit -projectPath /Users/isaac_rs/Desktop/ProyectoUnity \
+  -executeMethod PulseWaveBuilder.BuildAndWireAllScenes -logFile "$SCRATCH/unity_t9.log"; echo "exit=$?"
+grep -E "error CS|PulseWave.prefab construido|Onda de pulso cableada|FALTA" "$SCRATCH/unity_t9.log"
+PW_GUID=$(grep -o 'guid: [a-f0-9]*' Assets/Prefabs/PulseWave.prefab.meta | cut -d' ' -f2)
+grep -c "$PW_GUID" Assets/Scenes/Level1.unity   # espera >=1 (referencia en PlayerCombat)
+git add -A Assets/Scripts Assets/Editor Assets/Prefabs Assets/Scenes Assets/Sprites
+git commit -m "feat(combat): onda de fuego expansiva para el pulso de llama"
+```
+
+---
+
+### Task 10: UI — barra de cera y panel de game over
+
+**Files:**
+- Modify: `Assets/Editor/PixelSpriteImport.cs` (param opcional `border`)
+- Create: `Assets/Editor/UiDresser.cs`
+- Modify (vía batch): ambas escenas
+
+**Interfaces:**
+- Consumes: sprites UI (Task 7); estructura actual del Canvas: Slider (hijos `Fill Area/Fill`, `Handle Slide Area`), `PanelGameOver` (hijo `Button` con TMP y onClick→GameManager.RestartGame), `UIManager` en el GO del Canvas con `waxSlider` asignado y `waxFill`/`gameOverPanel`/`gameOverKillText` en null.
+- Produces: `PixelSpriteImport.Import(path, worldHeight, pivot, border)` (4º param opcional `Vector4?`); menú "Candle Fury/Vestir UI"; UI cableada.
+
+- [ ] **Step 1: Añadir `border` a `PixelSpriteImport.Import`**
+
+Firma nueva (backward-compatible):
+
+```csharp
+    public static Sprite Import(string assetPath, float worldHeight,
+                                Vector2? customPivot = null, Vector4? border = null)
+```
+
+Dentro del bloque de `TextureImporterSettings` (o en uno análogo si `customPivot`
+es null pero `border` no), aplicar además:
+
+```csharp
+        if (border.HasValue)
+        {
+            var ts2 = new TextureImporterSettings();
+            imp.ReadTextureSettings(ts2);
+            if (ts2.spriteBorder != border.Value)
+            {
+                ts2.spriteBorder = border.Value;
+                imp.SetTextureSettings(ts2);
+                dirty = true;
+            }
+        }
+```
+
+- [ ] **Step 2: Crear `Assets/Editor/UiDresser.cs`**
+
+```csharp
+#if UNITY_EDITOR
+using UnityEngine;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+using TMPro;
+
+/// <summary>
+/// CANDLE FURY — Viste la UI: barra de cera pixelart arriba a la izquierda
+/// (frame 9-slice + fill teñible + icono de llama, sin perilla), panel de
+/// game over oculto por defecto con fondo oscuro y botón centrado, y cablea
+/// las referencias del UIManager que estaban en null (waxFill, gameOverPanel,
+/// gameOverKillText). CanvasScaler pasa a Scale With Screen Size. Idempotente.
+/// Entrada batch: -executeMethod UiDresser.DressAllScenes
+/// </summary>
+public static class UiDresser
+{
+    const string Dir = "Assets/Sprites/UI/";
+    // PPU 50 → los bordes de 3/4 px se ven ~6/8 px en el canvas (ref PPU 100)
+    const float PpuTarget = 50f;
+
+    static readonly string[] ScenePaths =
+        { "Assets/Scenes/Level1.unity", "Assets/Scenes/Level2.unity" };
+
+    [MenuItem("Candle Fury/Vestir UI")]
+    public static void DressActiveScene()
+    {
+        Dress();
+        EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+        Debug.Log("Recuerda GUARDAR la escena (Ctrl+S) y repetir en la otra escena.");
+    }
+
+    public static void DressAllScenes()
+    {
+        foreach (string path in ScenePaths)
+        {
+            var scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
+            Dress();
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log($"✔ UI vestida en {path}");
+        }
+    }
+
+    static void Dress()
+    {
+        Sprite frame = PixelSpriteImport.Import(Dir + "ui_bar_frame.png", 10f / PpuTarget, null, new Vector4(3, 3, 3, 3));
+        Sprite fill  = PixelSpriteImport.Import(Dir + "ui_bar_fill.png",   4f / PpuTarget);
+        Sprite icon  = PixelSpriteImport.Import(Dir + "ui_icon_flame.png", 12f / PpuTarget);
+        Sprite btn   = PixelSpriteImport.Import(Dir + "ui_button.png",    16f / PpuTarget, null, new Vector4(4, 4, 4, 4));
+        if (frame == null || fill == null || icon == null || btn == null)
+        {
+            Debug.LogError("[UiDresser] Faltan sprites en Assets/Sprites/UI/");
+            return;
+        }
+
+        foreach (var ui in Object.FindObjectsByType<UIManager>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            var soUi = new SerializedObject(ui);
+
+            // ── CanvasScaler: escalar con la resolución ────────────────────
+            var scaler = ui.GetComponent<CanvasScaler>();
+            if (scaler != null)
+            {
+                Undo.RecordObject(scaler, "vestir UI");
+                scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                scaler.referenceResolution = new Vector2(800, 600);
+                scaler.matchWidthOrHeight  = 0.5f;
+            }
+
+            // ── Barra de cera ──────────────────────────────────────────────
+            var slider = soUi.FindProperty("waxSlider").objectReferenceValue as Slider;
+            if (slider != null)
+            {
+                var rt = slider.GetComponent<RectTransform>();
+                Undo.RecordObject(rt, "vestir UI");
+                rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0f, 1f);
+                rt.anchoredPosition = new Vector2(20f, -16f);
+                rt.sizeDelta        = new Vector2(200f, 16f);
+
+                Undo.RecordObject(slider, "vestir UI");
+                slider.interactable  = false;
+                slider.transition    = Selectable.Transition.None;
+                slider.targetGraphic = null;
+                slider.handleRect    = null;
+
+                // Fondo (frame 9-slice) como primer hijo
+                Transform bg = slider.transform.Find("Background");
+                if (bg == null)
+                {
+                    var go = new GameObject("Background", typeof(RectTransform));
+                    Undo.RegisterCreatedObjectUndo(go, "vestir UI");
+                    go.transform.SetParent(slider.transform, false);
+                    go.transform.SetAsFirstSibling();
+                    bg = go.transform;
+                }
+                var bgRt = (RectTransform)bg;
+                bgRt.anchorMin = Vector2.zero; bgRt.anchorMax = Vector2.one;
+                bgRt.offsetMin = Vector2.zero; bgRt.offsetMax = Vector2.zero;
+                var bgImg = bg.GetComponent<Image>();
+                if (bgImg == null) bgImg = Undo.AddComponent<Image>(bg.gameObject);
+                bgImg.sprite = frame;
+                bgImg.type   = Image.Type.Sliced;
+                bgImg.color  = Color.white;
+
+                // Fill con sprite teñible
+                var fillRect = slider.fillRect;
+                if (fillRect != null)
+                {
+                    var fillImg = fillRect.GetComponent<Image>();
+                    if (fillImg != null)
+                    {
+                        Undo.RecordObject(fillImg, "vestir UI");
+                        fillImg.sprite = fill;
+                        fillImg.type   = Image.Type.Simple;
+                        soUi.FindProperty("waxFill").objectReferenceValue = fillImg;
+                    }
+                    var fa = (RectTransform)fillRect.parent;   // Fill Area
+                    Undo.RecordObject(fa, "vestir UI");
+                    fa.anchorMin = Vector2.zero; fa.anchorMax = Vector2.one;
+                    fa.offsetMin = new Vector2(3f, 3f); fa.offsetMax = new Vector2(-3f, -3f);
+                }
+
+                // Sin perilla
+                Transform handleArea = slider.transform.Find("Handle Slide Area");
+                if (handleArea != null && handleArea.gameObject.activeSelf)
+                    handleArea.gameObject.SetActive(false);
+
+                // Icono de llama a la izquierda
+                Transform ic = slider.transform.Find("FlameIcon");
+                if (ic == null)
+                {
+                    var go = new GameObject("FlameIcon", typeof(RectTransform));
+                    Undo.RegisterCreatedObjectUndo(go, "vestir UI");
+                    go.transform.SetParent(slider.transform, false);
+                    ic = go.transform;
+                }
+                var icRt = (RectTransform)ic;
+                icRt.anchorMin = icRt.anchorMax = new Vector2(0f, 0.5f);
+                icRt.pivot = new Vector2(1f, 0.5f);
+                icRt.anchoredPosition = new Vector2(-3f, 0f);
+                icRt.sizeDelta = new Vector2(16f, 16f);
+                var icImg = ic.GetComponent<Image>();
+                if (icImg == null) icImg = Undo.AddComponent<Image>(ic.gameObject);
+                icImg.sprite = icon;
+            }
+
+            // ── Panel de game over ────────────────────────────────────────
+            Transform panel = null;
+            foreach (var t in ui.GetComponentsInChildren<Transform>(true))
+                if (t.name == "PanelGameOver") { panel = t; break; }
+            if (panel != null)
+            {
+                var panelGo = panel.gameObject;
+                var prt = panelGo.GetComponent<RectTransform>();
+                if (prt == null) prt = Undo.AddComponent<RectTransform>(panelGo);   // convierte el Transform
+                prt.anchorMin = Vector2.zero; prt.anchorMax = Vector2.one;
+                prt.offsetMin = Vector2.zero; prt.offsetMax = Vector2.zero;
+
+                var pImg = panelGo.GetComponent<Image>();
+                if (pImg == null) pImg = Undo.AddComponent<Image>(panelGo);
+                pImg.sprite = null;
+                pImg.color  = new Color(0f, 0f, 0f, 0.78f);
+
+                // Botón centrado con sprite pixelart
+                Transform button = panel.Find("Button");
+                TMP_FontAsset font = null;
+                if (button != null)
+                {
+                    var brt = button.GetComponent<RectTransform>();
+                    Undo.RecordObject(brt, "vestir UI");
+                    brt.anchorMin = brt.anchorMax = brt.pivot = new Vector2(0.5f, 0.5f);
+                    brt.anchoredPosition = new Vector2(0f, -30f);
+                    brt.sizeDelta        = new Vector2(220f, 44f);
+                    var bImg = button.GetComponent<Image>();
+                    if (bImg != null)
+                    {
+                        Undo.RecordObject(bImg, "vestir UI");
+                        bImg.sprite = btn;
+                        bImg.type   = Image.Type.Sliced;
+                        bImg.color  = Color.white;
+                    }
+                    var label = button.GetComponentInChildren<TextMeshProUGUI>(true);
+                    if (label != null) font = label.font;
+                }
+
+                // Texto de kills sobre el botón
+                Transform kills = panel.Find("GameOverKills");
+                if (kills == null)
+                {
+                    var go = new GameObject("GameOverKills", typeof(RectTransform));
+                    Undo.RegisterCreatedObjectUndo(go, "vestir UI");
+                    go.transform.SetParent(panel, false);
+                    kills = go.transform;
+                }
+                var krt = (RectTransform)kills;
+                krt.anchorMin = krt.anchorMax = krt.pivot = new Vector2(0.5f, 0.5f);
+                krt.anchoredPosition = new Vector2(0f, 40f);
+                krt.sizeDelta        = new Vector2(420f, 40f);
+                var ktxt = kills.GetComponent<TextMeshProUGUI>();
+                if (ktxt == null) ktxt = Undo.AddComponent<TextMeshProUGUI>(kills.gameObject);
+                if (font != null) ktxt.font = font;
+                ktxt.fontSize  = 26f;
+                ktxt.alignment = TextAlignmentOptions.Center;
+                if (string.IsNullOrEmpty(ktxt.text)) ktxt.text = "Enemigos derrotados: 0";
+
+                // Oculto por defecto; ShowGameOver() lo activa al morir
+                if (panelGo.activeSelf) panelGo.SetActive(false);
+
+                soUi.FindProperty("gameOverPanel").objectReferenceValue    = panelGo;
+                soUi.FindProperty("gameOverKillText").objectReferenceValue = ktxt;
+            }
+            else
+            {
+                Debug.LogWarning("[UiDresser] No se encontró 'PanelGameOver' bajo el Canvas");
+            }
+
+            soUi.ApplyModifiedProperties();
+            Debug.Log($"✔ UI de {ui.gameObject.name} vestida");
+        }
+    }
+}
+#endif
+```
+
+- [ ] **Step 3: Batch + verificación + commit**
+
+```bash
+"$UNITY" -batchmode -quit -projectPath /Users/isaac_rs/Desktop/ProyectoUnity \
+  -executeMethod UiDresser.DressAllScenes -logFile "$SCRATCH/unity_t10.log"; echo "exit=$?"
+grep -E "error CS|UI vestida|Faltan sprites|No se encontró" "$SCRATCH/unity_t10.log"
+grep -c "m_Name: GameOverKills" Assets/Scenes/Level1.unity   # espera 1
+grep -c "m_Name: FlameIcon" Assets/Scenes/Level1.unity        # espera 1
+# idempotencia: repetir el batch y confirmar que los conteos siguen en 1
+"$UNITY" -batchmode -quit -projectPath /Users/isaac_rs/Desktop/ProyectoUnity \
+  -executeMethod UiDresser.DressAllScenes -logFile "$SCRATCH/unity_t10b.log"
+grep -c "m_Name: GameOverKills" Assets/Scenes/Level1.unity   # sigue 1
+git add -A Assets/Editor Assets/Scenes Assets/Sprites
+git commit -m "feat(ui): barra de cera pixelart y panel de game over oculto con boton centrado"
+```
+
+Verificación en Play (usuario): checklist del addendum en la spec.
