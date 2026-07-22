@@ -20,6 +20,7 @@ public class RoyalPyromancer : EnemyBase
     Transform player;
     float     castTimer;
     bool      playerDetected;
+    RoyalPyromancerVisuals visuals;
 
     protected override void Awake()
     {
@@ -30,6 +31,7 @@ public class RoyalPyromancer : EnemyBase
         moveSpeed     = 0f;       // estático
 
         base.Awake();
+        visuals   = GetComponent<RoyalPyromancerVisuals>();
         player    = GameObject.FindGameObjectWithTag("Player")?.transform;
         castTimer = castInterval;
     }
@@ -71,6 +73,7 @@ public class RoyalPyromancer : EnemyBase
     IEnumerator CastOrbs()
     {
         if (anim != null) anim.SetTrigger("Cast");
+        visuals?.OnCastStart();
         for (int i = 0; i < orbsPerCast; i++)
         {
             if (isDead) yield break;
