@@ -11,8 +11,8 @@ using System.Linq;
 /// CANDLE FURY — Asignador de Sprites oficiales del GDD (Entrega 3).
 ///
 /// CÓMO USAR:
-/// 1. Verifica que existan los 4 PNG en Assets/Sprites/Characters/:
-///    principe_vela.png · wax_beast.png · candle_guard.png · royal_pyromancer.png
+/// 1. Verifica que existan los 5 PNG en Assets/Sprites/Characters/:
+///    principe_vela.png · wax_beast.png · candle_guard.png · royal_pyromancer_idle.png · royal_pyromancer_cast.png
 /// 2. Abre Level1 → menú Candle Fury → Asignar Sprites → revisa Console → Ctrl+S
 /// 3. Repite en Level2
 ///
@@ -280,6 +280,10 @@ public static class SpriteAssigner
                     castLight.intensity             = 0f;
                     creados.Add("Luz de casteo creada en CastPoint");
                 }
+            }
+            else
+            {
+                Debug.LogWarning($"[SpriteAssigner] {boss.gameObject.name} sin hijo 'CastPoint': luz de casteo no creada");
             }
 
             var so = new SerializedObject(visuals);

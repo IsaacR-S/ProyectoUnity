@@ -36,6 +36,11 @@ public static class ProjectileDresser
         try
         {
             var sr = root.GetComponent<SpriteRenderer>();
+            if (sr == null)
+            {
+                Debug.LogError($"[ProjectileDresser] {PrefabPath} sin SpriteRenderer en la raíz");
+                return;
+            }
             sr.sprite = sprites[0];
             sr.color  = Color.white;              // el color ya va en el sprite
             if (unlit != null) sr.sharedMaterial = unlit;

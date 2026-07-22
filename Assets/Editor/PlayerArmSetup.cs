@@ -64,6 +64,7 @@ public static class PlayerArmSetup
                 go.transform.SetParent(pc.transform, false);
                 arm = go.transform;
             }
+            Undo.RecordObject(arm, "configurar Arm");
             arm.localPosition = new Vector3(0.05f, 0.15f, 0f);   // hombro aprox.
 
             var sr = arm.GetComponent<SpriteRenderer>();
