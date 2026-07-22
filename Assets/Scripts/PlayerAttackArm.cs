@@ -3,9 +3,10 @@ using UnityEngine;
 
 /// <summary>
 /// Brazo overlay procedural del Príncipe Vela: vive en el hijo "Arm"
-/// (siempre activo, con su SpriteRenderer apagado en reposo) y se anima
-/// por corrutinas — sin Animator. El flip del jugador (localScale.x
-/// negativo) voltea el brazo automáticamente.
+/// (siempre visible con la espada en pose de guardia) y se anima por
+/// corrutinas — sin Animator. El flip del jugador (localScale.x negativo)
+/// voltea el brazo automáticamente. El sprite del jugador ya no trae espada
+/// dibujada: esta es la única espada del personaje.
 /// Configurado por el menú "Candle Fury/Configurar Brazo Jugador".
 /// </summary>
 [RequireComponent(typeof(SpriteRenderer))]
@@ -13,9 +14,10 @@ public class PlayerAttackArm : MonoBehaviour
 {
     [SerializeField] Sprite swordSprite;
     [SerializeField] Sprite castSprite;
-    [SerializeField] float  swingTime = 0.18f;
-    [SerializeField] float  shootTime = 0.15f;
-    [SerializeField] float  pulseTime = 0.25f;
+    [SerializeField] float  swingTime  = 0.18f;
+    [SerializeField] float  shootTime  = 0.15f;
+    [SerializeField] float  pulseTime  = 0.25f;
+    [SerializeField] float  guardAngle = -30f;   // pose de guardia en reposo
 
     SpriteRenderer sr;
     Vector3   basePos;
@@ -25,9 +27,9 @@ public class PlayerAttackArm : MonoBehaviour
     void Awake()
     {
         sr = GetComponent<SpriteRenderer>();
-        sr.enabled = false;
         basePos = transform.localPosition;
         body    = transform.parent;
+        ResetVisual();   // arranca en guardia con la espada visible
     }
 
     public void PlaySword() => Play(SwordSwing());
@@ -44,10 +46,11 @@ public class PlayerAttackArm : MonoBehaviour
     void ResetVisual()
     {
         transform.localPosition = basePos;
-        transform.localRotation = Quaternion.identity;
+        transform.localRotation = Quaternion.Euler(0f, 0f, guardAngle);
         if (body != null)
             body.localScale = new Vector3(Mathf.Sign(body.localScale.x), 1f, 1f);
-        sr.enabled = false;
+        sr.sprite  = swordSprite;   // la espada queda visible en guardia
+        sr.enabled = true;
     }
 
     IEnumerator SwordSwing()

@@ -6,8 +6,8 @@ using UnityEngine.SceneManagement;
 
 /// <summary>
 /// CANDLE FURY — Crea/configura el hijo "Arm" del Player en la escena:
-/// SpriteRenderer (lit, encima del cuerpo, apagado) + PlayerAttackArm con
-/// los sprites arm_sword/arm_cast. Idempotente, con Undo.
+/// SpriteRenderer (lit, encima del cuerpo, con la espada visible en pose de
+/// guardia) + PlayerAttackArm con los sprites arm_sword/arm_cast. Idempotente, con Undo.
 /// No hay prefab de Player: correr en Level1 y Level2.
 /// Entrada batch: -executeMethod PlayerArmSetup.SetupAllScenes
 /// </summary>
@@ -71,7 +71,7 @@ public static class PlayerArmSetup
             if (sr == null) sr = Undo.AddComponent<SpriteRenderer>(arm.gameObject);
             Undo.RecordObject(sr, "configurar Arm");
             sr.sprite  = sword;
-            sr.enabled = false;                    // PlayerAttackArm lo enciende al atacar
+            sr.enabled = true;                     // espada visible en guardia (reposo)
             if (lit != null) sr.sharedMaterial = lit;
             var bodySr = pc.GetComponent<SpriteRenderer>();
             if (bodySr != null)
