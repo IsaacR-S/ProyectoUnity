@@ -176,3 +176,74 @@ checklist en el editor sobre ambos niveles:
 4. El boss levita en idle y cambia a pose de casteo al lanzar orbes; su flash de daño
    sigue funcionando; sus stats y comportamiento no cambian.
 5. Flip de dirección, colliders y pickups intactos.
+
+---
+
+# Addendum (2026-07-21, tras checklist en Play): espada, UI y onda de fuego
+
+Feedback del usuario en la verificación: (1) la espada dibujada dentro del sprite del
+jugador no se mueve y el overlay parece "otra cosa"; (2) quiere una barra de vida más
+estética y el botón "volver a jugar" mejor ubicado (hoy el botón está siempre visible
+en pantalla porque el panel de game over nunca se activa: las referencias del
+UIManager están sin asignar en escena); (3) quiere un visual de "onda de fuego" para
+el ataque X (hoy el pulso no tiene ningún efecto visible).
+
+Decisión del usuario: la espada del overlay queda SIEMPRE visible en pose de guardia.
+
+## 5. Fix de la espada integrada
+
+- Se BORRA la espada dibujada de `principe_vela.png` (edición de píxeles por región,
+  mismo archivo y guid — nada que recablear). La espada del overlay pasa a ser la
+  única espada.
+- `PlayerAttackArm` cambia a "guardia siempre visible": el SpriteRenderer del brazo
+  queda habilitado permanentemente con `arm_sword` en pose de guardia (rotación
+  −30°), el swing parte de la guardia, y durante Shoot/Pulse el sprite cambia a
+  `arm_cast` y vuelve a la guardia al terminar.
+
+## 6. Barra de cera estética
+
+- Sprites pixelart nuevos en `Assets/Sprites/UI/`: `ui_bar_frame.png` (80×10, borde
+  3px para 9-slice), `ui_bar_fill.png` (4×4 blanco, se tiñe por código), e
+  `ui_icon_flame.png` (12×12, llama cian).
+- El Slider existente se re-viste: hijo `Background` nuevo (frame 9-slice oscuro),
+  Fill con `ui_bar_fill` (el lerp cian→rojo de `UIManager.UpdateWaxBar` por fin
+  funciona al asignar `waxFill`), Handle deshabilitado (barra sin perilla), icono de
+  llama a la izquierda.
+- Reposición: ancla/pivote top-left (0,1), posición (20,−16), tamaño (200,16).
+- `CanvasScaler` pasa a Scale With Screen Size (ref 800×600, match 0.5) para que la
+  UI escale con la resolución.
+
+## 7. Panel de game over y botón
+
+- `PanelGameOver` gana `RectTransform` full-stretch + `Image` negra semitransparente
+  (alpha 0.78), queda INACTIVO por defecto y solo lo activa `ShowGameOver()`.
+- Botón centrado (220×44, ancla 0.5/0.5, pos (0,−30)) con sprite pixelart
+  `ui_button.png` (32×16, borde 4px 9-slice) y su texto TMP; conserva su onClick
+  persistente a `GameManager.RestartGame`.
+- Texto nuevo `GameOverKills` (TMP) sobre el botón; se asigna a
+  `UIManager.gameOverKillText` junto con `gameOverPanel` y `waxFill` (referencias hoy
+  en null).
+- Todo lo hace un editor script idempotente nuevo: menú "Candle Fury/Vestir UI"
+  (`UiDresser.cs`), en ambas escenas.
+
+## 8. Onda de fuego del pulso (X)
+
+- Arte: `pulse_wave_0..2.png` (3 frames de anillo 48×48, paleta cian con núcleo
+  claro).
+- Prefab nuevo `Assets/Prefabs/PulseWave.prefab`: SpriteRenderer (unlit, frame 0) +
+  `SpriteFlipbook` + componente nuevo `PulseWaveEffect` que escala el anillo desde
+  ~0.5u hasta el diámetro real del daño (6u = radio 3 del pulso) en ~0.35s con fade
+  de alpha 1→0 y se autodestruye.
+- `PlayerCombat` gana campo serializado `pulseWavePrefab` y lo instancia en
+  `FlameCheck()`; el prefab lo construye y cablea (en ambas escenas) un editor script
+  nuevo `PulseWaveBuilder.cs` (menú "Candle Fury/Construir Onda de Pulso").
+
+## Verificación del addendum (manual, en Play)
+
+1. En reposo el príncipe empuña UNA espada (la del overlay, en guardia); con Z hace
+   el swing; no queda ninguna espada estática pegada al cuerpo.
+2. La barra de cera se ve arriba a la izquierda con marco pixelart, se vacía y cambia
+   de color al recibir daño; sin perilla flotante.
+3. El botón "Volver a Jugar" NO se ve durante el juego; al morir aparece el panel
+   oscuro centrado con el conteo de kills y el botón funcional.
+4. Con X se emite el anillo de fuego que se expande hasta el borde del área de daño.
