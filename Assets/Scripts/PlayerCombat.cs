@@ -36,7 +36,6 @@ public class PlayerCombat : MonoBehaviour
     WaxSystem        waxSystem;
     PlayerController controller;
     Animator         anim;
-    PlayerAttackArm  arm;
 
     // ── Timers ────────────────────────────────────────────────────────────────
     float attackTimer;
@@ -52,7 +51,6 @@ public class PlayerCombat : MonoBehaviour
         waxSystem  = GetComponent<WaxSystem>();
         controller = GetComponent<PlayerController>();
         anim       = GetComponent<Animator>();
-        arm        = GetComponentInChildren<PlayerAttackArm>();
     }
 
     void Update()
@@ -81,7 +79,6 @@ public class PlayerCombat : MonoBehaviour
     {
         attackTimer = attackCooldown;
         anim.SetTrigger("Attack");
-        arm?.PlaySword();
 
         Collider2D[] hits = Physics2D.OverlapCircleAll(attackPoint.position, attackRadius, enemyLayer);
         AudioManager.Instance?.PlaySFX(AudioManager.Instance.sfxSword);
@@ -104,7 +101,6 @@ public class PlayerCombat : MonoBehaviour
         pulseTimer = pulseCooldown;
         waxSystem.RemoveWax(pulseWaxCost);
         anim.SetTrigger("Pulse");
-        arm?.PlayPulse();
 
         if (pulseWavePrefab != null)
             Instantiate(pulseWavePrefab, transform.position, Quaternion.identity);
@@ -141,7 +137,6 @@ public class PlayerCombat : MonoBehaviour
         flameTimer = flameCooldown;
         waxSystem.RemoveWax(flameWaxCost);
         anim.SetTrigger("Shoot");
-        arm?.PlayShoot();
 
         float dir = controller.FacingRight ? 1f : -1f;
         GameObject proj = Instantiate(flamePrefab, attackPoint.position, Quaternion.identity);
