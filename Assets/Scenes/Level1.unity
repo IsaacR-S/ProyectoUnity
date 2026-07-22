@@ -3654,6 +3654,7 @@ MonoBehaviour:
   pulseDamage: 35
   pulseCooldown: 1.2
   pulseWaxCost: 15
+  pulseWavePrefab: {fileID: 1888786120235393470, guid: 8c56261297b564da291254dd20e7f664, type: 3}
   flamePrefab: {fileID: 2229521195584686271, guid: 366be820727e340adbd2d060ce3e325a, type: 3}
   flameSpeed: 12
   flameCooldown: 0.8

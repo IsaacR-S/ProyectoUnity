@@ -24,6 +24,7 @@ public class PlayerCombat : MonoBehaviour
     [SerializeField] int   pulseDamage     = 35;
     [SerializeField] float pulseCooldown   = 1.2f;
     [SerializeField] float pulseWaxCost    = 15f;   // costo fijo en cera
+    [SerializeField] GameObject pulseWavePrefab;     // anillo visual de la onda
 
     [Header("Proyectil de llama (fuego — consume cera)")]
     [SerializeField] GameObject flamePrefab;         // prefab simple con Rigidbody2D
@@ -104,6 +105,9 @@ public class PlayerCombat : MonoBehaviour
         waxSystem.RemoveWax(pulseWaxCost);
         anim.SetTrigger("Pulse");
         arm?.PlayPulse();
+
+        if (pulseWavePrefab != null)
+            Instantiate(pulseWavePrefab, transform.position, Quaternion.identity);
 
         Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, pulseRadius, enemyLayer);
         AudioManager.Instance?.PlaySFX(AudioManager.Instance.sfxFire);
