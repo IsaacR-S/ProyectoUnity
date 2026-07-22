@@ -11,8 +11,8 @@ using System.Linq;
 /// CANDLE FURY — Asignador de Sprites oficiales del GDD (Entrega 3).
 ///
 /// CÓMO USAR:
-/// 1. Verifica que existan los 5 PNG en Assets/Sprites/Characters/:
-///    principe_vela.png · wax_beast.png · candle_guard.png · royal_pyromancer_idle.png · royal_pyromancer_cast.png
+/// 1. Verifica que existan los 4 PNG en Assets/Sprites/Characters/:
+///    principe_vela.png · wax_beast.png · candle_guard.png · royal_pyromancer.png
 /// 2. Abre Level1 → menú Candle Fury → Asignar Sprites → revisa Console → Ctrl+S
 /// 3. Repite en Level2
 ///
@@ -46,8 +46,7 @@ public static class SpriteAssigner
         ("principe_vela.png",    1.20f),
         ("wax_beast.png",        0.90f),  // más ancho que alto
         ("candle_guard.png",     1.30f),
-        ("royal_pyromancer_idle.png", 1.56f),  // jefe: 1.3× el alto del player
-        ("royal_pyromancer_cast.png", 1.56f),  // pose de casteo (mismo tamaño)
+        ("royal_pyromancer.png", 1.56f),  // jefe: 1.3× el alto del player
     };
 
     // Sprites dibujados mirando a la IZQUIERDA (se compensan con flipX).
@@ -124,9 +123,8 @@ public static class SpriteAssigner
         count = AssignAll<CandleGuard>(sprites, "candle_guard.png", litMat);
         if (count > 0) creados.Add($"CandleGuard: sprite asignado a {count}");
 
-        count = AssignAll<RoyalPyromancer>(sprites, "royal_pyromancer_idle.png", litMat);
+        count = AssignAll<RoyalPyromancer>(sprites, "royal_pyromancer.png", litMat);
         if (count > 0) creados.Add($"RoyalPyromancer: sprite asignado a {count}");
-        SetupBossExtras(sprites, creados);
 
         // ── Resumen ────────────────────────────────────────────────────────
         EditorSceneManager.MarkSceneDirty(scene);
@@ -249,48 +247,6 @@ public static class SpriteAssigner
         so.FindProperty("waxSystem").objectReferenceValue = player.GetComponent<WaxSystem>();
         so.ApplyModifiedProperties();
         creados.Add("FlameLightFlicker sincronizado con WaxSystem");
-    }
-
-    // ── Extras del jefe: visuales de casteo y luz en el CastPoint ──────────
-    static void SetupBossExtras(Dictionary<string, Sprite> sprites, List<string> creados)
-    {
-        if (!sprites.TryGetValue("royal_pyromancer_cast.png", out var castSprite)) return;
-
-        foreach (var boss in Object.FindObjectsByType<RoyalPyromancer>(FindObjectsSortMode.None))
-        {
-            var visuals = boss.GetComponent<RoyalPyromancerVisuals>();
-            if (visuals == null)
-            {
-                visuals = Undo.AddComponent<RoyalPyromancerVisuals>(boss.gameObject);
-                creados.Add("RoyalPyromancerVisuals agregado al jefe");
-            }
-
-            // Luz de casteo magenta (#FF4080) en el CastPoint, apagada en reposo
-            Light2D castLight = null;
-            Transform castPoint = boss.transform.Find("CastPoint");
-            if (castPoint != null)
-            {
-                castLight = castPoint.GetComponent<Light2D>();
-                if (castLight == null)
-                {
-                    castLight = Undo.AddComponent<Light2D>(castPoint.gameObject);
-                    castLight.lightType             = Light2D.LightType.Point;
-                    castLight.color                 = new Color(1f, 0.251f, 0.502f);
-                    castLight.pointLightOuterRadius = 1.5f;
-                    castLight.intensity             = 0f;
-                    creados.Add("Luz de casteo creada en CastPoint");
-                }
-            }
-            else
-            {
-                Debug.LogWarning($"[SpriteAssigner] {boss.gameObject.name} sin hijo 'CastPoint': luz de casteo no creada");
-            }
-
-            var so = new SerializedObject(visuals);
-            so.FindProperty("castSprite").objectReferenceValue = castSprite;
-            so.FindProperty("castLight").objectReferenceValue  = castLight;
-            so.ApplyModifiedProperties();
-        }
     }
 
     // Entrada batch: -executeMethod SpriteAssigner.AssignAllScenes
