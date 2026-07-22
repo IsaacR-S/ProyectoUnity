@@ -10,7 +10,8 @@ using UnityEditor;
 /// </summary>
 public static class PixelSpriteImport
 {
-    public static Sprite Import(string assetPath, float worldHeight, Vector2? customPivot = null)
+    public static Sprite Import(string assetPath, float worldHeight,
+                                Vector2? customPivot = null, Vector4? border = null)
     {
         var imp = AssetImporter.GetAtPath(assetPath) as TextureImporter;
         if (imp == null) return null;
@@ -29,17 +30,24 @@ public static class PixelSpriteImport
         float ppu = Mathf.Round(tex.height / worldHeight);
         if (Mathf.Abs(imp.spritePixelsPerUnit - ppu) > 0.5f) { imp.spritePixelsPerUnit = ppu; dirty = true; }
 
-        if (customPivot.HasValue)
+        if (customPivot.HasValue || border.HasValue)
         {
             var ts = new TextureImporterSettings();
             imp.ReadTextureSettings(ts);
-            if (ts.spriteAlignment != (int)SpriteAlignment.Custom || ts.spritePivot != customPivot.Value)
+            bool tsDirty = false;
+            if (customPivot.HasValue &&
+                (ts.spriteAlignment != (int)SpriteAlignment.Custom || ts.spritePivot != customPivot.Value))
             {
                 ts.spriteAlignment = (int)SpriteAlignment.Custom;
                 ts.spritePivot     = customPivot.Value;
-                imp.SetTextureSettings(ts);
-                dirty = true;
+                tsDirty = true;
             }
+            if (border.HasValue && ts.spriteBorder != border.Value)
+            {
+                ts.spriteBorder = border.Value;
+                tsDirty = true;
+            }
+            if (tsDirty) { imp.SetTextureSettings(ts); dirty = true; }
         }
         if (dirty) imp.SaveAndReimport();
 
