@@ -54,9 +54,10 @@ cicla un array de sprites en el `SpriteRenderer` cada `frameTime` segundos
 - Se añade `SpriteFlipbook` con los 4 frames.
 - El `CircleCollider2D` (radio 0.5, trigger) y `Rigidbody2D` no cambian.
 
-**Importación:** se extiende `SpriteAssigner.cs` con la importación de los PNGs de
-`Effects/` (Point, uncompressed, Single) y PPU calculado para una altura de mundo de
-~0.9u (coherente con el diámetro de colisión de 1u).
+**Importación:** los PNGs de `Effects/` se importan vía `PixelSpriteImport.Import`
+(Point, uncompressed, Single), invocado desde el menú `ProjectileDresser` ("Vestir
+Proyectil"), con PPU calculado para una altura de mundo de ~0.9u (coherente con el
+diámetro de colisión de 1u).
 
 ## 2. Iluminación del proyectil
 
@@ -73,7 +74,8 @@ Hoy `ProjectileGlow.Attach` añade en runtime una `Light2D` cian estática
   `flicker` (default false); solo el call-site del proyectil del jugador pasa valores
   nuevos, así los proyectiles enemigos quedan idénticos sin tocar sus llamadas.
 - **Estela:** `TrailRenderer` en `Proyectil.prefab` — tiempo 0.15s, ancho pequeño
-  decreciente, degradado cian→transparente, material por defecto de línea. En Level 1
+  decreciente, degradado cian→transparente, material Sprite-Unlit-Default (el mismo
+  material emisivo del proyectil; decidido en implementación). En Level 1
   (luz ambiental brillante) la estela es la señal visible; la Light2D luce en Level 2
   y zonas oscuras.
 
@@ -93,7 +95,7 @@ desactivado en reposo. Como el flip del jugador niega `localScale.x`
 **Componente nuevo:** `Assets/Scripts/PlayerAttackArm.cs` con tres métodos públicos,
 cada uno una corrutina corta que muestra el brazo, lo anima y lo oculta:
 
-- `PlaySword()` — sprite `arm_sword`, rotación de −60° a +80° en ~0.18s (swing).
+- `PlaySword()` — sprite `arm_sword`, rotación de 70° a −50° (tajo descendente; ajustado en implementación por legibilidad del golpe) en ~0.18s (swing).
 - `PlayShoot()` — sprite `arm_cast`, empuje hacia adelante (offset local x
   0.05→0.25→0.1) en ~0.15s, sincronizado con la instanciación del proyectil.
 - `PlayPulse()` — sprite `arm_cast` alzado (~90°) + scale-punch sutil del cuerpo
@@ -126,7 +128,8 @@ romper el `CapsuleCollider2D` ni el posicionamiento en escena.
 **Componente nuevo:** `Assets/Scripts/RoyalPyromancerVisuals.cs` (SRP: lo visual
 separado de la lógica de combate):
 
-- *Idle*: levitación — bob sinusoidal de la posición local (±0.08u, periodo ~2.5s).
+- *Idle*: levitación — bob sinusoidal de la posición (world-space; equivalente porque
+  el jefe es estático y sin padre móvil) (±0.08u, periodo ~2.5s).
   El bob mueve solo el transform visual; al ser Rigidbody2D kinemático y estático
   (moveSpeed 0), no interfiere con física.
 - *Cast* (`OnCastStart()`): swap al sprite de casteo durante ~0.5s + pulso de una
@@ -149,9 +152,13 @@ nuevos y añadir `RoyalPyromancerVisuals` al boss (idempotente).
 | `Assets/Scripts/PlayerAttackArm.cs` | MonoBehaviour | Animación procedural del brazo |
 | `Assets/Scripts/RoyalPyromancerVisuals.cs` | MonoBehaviour | Levitación + pose de casteo del boss |
 | `Assets/Editor/PlayerArmSetup.cs` | Editor | Menú "Configurar Brazo Jugador" |
+| `Assets/Editor/PixelSpriteImport.cs` | Editor | Importador pixelart compartido: PPU, Point, pivote custom |
+| `Assets/Editor/ProjectileDresser.cs` | Editor | Menú "Vestir Proyectil": prefab fireball + estela |
 
 Archivos modificados: `Proyectil.prefab`, `FlameProjectile.cs`, `ProjectileGlow.cs`,
-`PlayerCombat.cs`, `RoyalPyromancer.cs`, `SpriteAssigner.cs`.
+`PlayerCombat.cs`, `RoyalPyromancer.cs`, `SpriteAssigner.cs` (solo cubre los sprites de
+`Characters/`; los PNGs de `Effects/` se importan vía `PixelSpriteImport`, invocado
+desde `ProjectileDresser.cs` y `PlayerArmSetup.cs`).
 Arte nuevo: 4 fireball + 2 brazos + 2 boss = 8 PNGs (generados por script Python/PIL
 en scratchpad; solo los PNGs finales entran al repo).
 
