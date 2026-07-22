@@ -45,6 +45,8 @@ public class PlayerAttackArm : MonoBehaviour
     {
         transform.localPosition = basePos;
         transform.localRotation = Quaternion.identity;
+        if (body != null)
+            body.localScale = new Vector3(Mathf.Sign(body.localScale.x), 1f, 1f);
         sr.enabled = false;
     }
 
@@ -98,8 +100,6 @@ public class PlayerAttackArm : MonoBehaviour
             }
             yield return null;
         }
-        if (body != null)
-            body.localScale = new Vector3(Mathf.Sign(body.localScale.x), 1f, 1f);
         ResetVisual();
         current = null;
     }
