@@ -51,7 +51,24 @@ public class GameManager : MonoBehaviour
         if (gameEnded) return;
         gameEnded = true;
         Debug.Log("[GameManager] ¡VICTORIA!");
-        StartCoroutine(LoadSceneDelayed(winScene, 1.5f));
+        StartCoroutine(WinRoutine());
+    }
+
+    IEnumerator WinRoutine()
+    {
+        yield return new WaitForSeconds(1f);
+
+        // Si algún día existe una escena "Win", se usa; si no, el juego
+        // TERMINA aquí: panel de victoria y todo congelado.
+        if (Application.CanStreamedLevelBeLoaded(winScene))
+        {
+            SceneManager.LoadScene(winScene);
+        }
+        else
+        {
+            UIManager.Instance?.ShowWin();
+            Time.timeScale = 0f;   // fin del juego (los botones de UI siguen funcionando)
+        }
     }
 
     // ── Registrar kill ────────────────────────────────────────────────────────
@@ -64,6 +81,7 @@ public class GameManager : MonoBehaviour
     // ── Reiniciar ─────────────────────────────────────────────────────────────
     public void RestartGame()
     {
+        Time.timeScale = 1f;   // por si venimos de la pantalla de victoria
         gameEnded  = false;
         killCount  = 0;
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
@@ -71,6 +89,7 @@ public class GameManager : MonoBehaviour
 
     public void LoadMainMenu()
     {
+        Time.timeScale = 1f;
         gameEnded = false;
         killCount = 0;
         SceneManager.LoadScene(mainMenuScene);

@@ -8,7 +8,8 @@ public class RoyalPyromancer : EnemyBase
 {
     [Header("Pirómante Real")]
     [SerializeField] float    detectionRange  = 12f;
-    [SerializeField] GameObject magicOrbPrefab;
+    // protected: RoyalPyromancerL2 lo sustituye por su orbe propio (MagicOrb_L2)
+    [SerializeField] protected GameObject magicOrbPrefab;
     [SerializeField] Transform  castPoint;
     [SerializeField] float    castInterval    = 3f;
     [SerializeField] int      orbsPerCast     = 2;

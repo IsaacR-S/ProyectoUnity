@@ -155,9 +155,10 @@ public static class AestheticApplier
             foreach (EnemyBase enemy in enemigos)
             {
                 Color c; float r;
-                if      (enemy is RoyalPyromancer) { c = PyroGlow;  r = 3.5f; }
-                else if (enemy is CandleGuard)     { c = GuardGlow; r = 2.5f; }
-                else                               { c = BeastGlow; r = 2.0f; } // WaxBeast y otros
+                if      (enemy is RoyalPyromancerL2) { c = new Color(0.478f, 0.376f, 1f); r = 5f; } // #7A60FF jefe final
+                else if (enemy is RoyalPyromancer)   { c = PyroGlow;  r = 3.5f; }
+                else if (enemy is CandleGuard)       { c = GuardGlow; r = 2.5f; }
+                else                                 { c = BeastGlow; r = 2.0f; } // WaxBeast y otros
                 AttachPointLight(enemy.transform, "LuzEnemiga", c, r, 1.2f);
             }
             if (enemigos.Length > 0)
@@ -165,14 +166,10 @@ public static class AestheticApplier
             else
                 faltantes.Add("Enemigos (ejecuta ANTES 'Construir Level2' y repite este menú)");
 
-            // 4c. Pickups: brillan dorado para guiar al jugador de luz en luz
-            int pickups = 0;
-            foreach (PowerUpBase p in Object.FindObjectsByType<PowerUpBase>(FindObjectsSortMode.None))
-            { AttachPointLight(p.transform, "LuzPickup", PickupGlow, 1.2f, 1.2f); pickups++; }
-            foreach (WaxPickup w in Object.FindObjectsByType<WaxPickup>(FindObjectsSortMode.None))
-            { AttachPointLight(w.transform, "LuzPickup", PickupGlow, 1.2f, 1.2f); pickups++; }
-            if (pickups > 0) creados.Add($"Luz dorada #FFB830 en {pickups} pickups/gotas");
-            else             faltantes.Add("Pickups/Gotas (¿aún no colocados?)");
+            // 4c. Pickups: sus luces de color POR TIPO las gestiona
+            //     "Candle Fury/Vestir Nivel" (no tocarlas aquí para no
+            //     pisar los colores gota/mecha/filo/sellada/núcleo).
+            creados.Add("Luces de pickups: gestionadas por 'Vestir Nivel' (por tipo)");
 
             // 4d. Meta: faro verde, el objetivo se ve desde lejos
             LevelEnd meta = Object.FindAnyObjectByType<LevelEnd>();
@@ -218,6 +215,14 @@ public static class AestheticApplier
             soF.FindProperty("flameRenderer").objectReferenceValue =
                 player.GetComponent<SpriteRenderer>();
             soF.ApplyModifiedProperties();
+
+            // ── 5c. Limpieza: el swing de espada (SwordArm) fue descartado ──
+            Transform oldArm = player.transform.Find("SwordArm");
+            if (oldArm != null)
+            {
+                Undo.DestroyObjectImmediate(oldArm.gameObject);
+                creados.Add("SwordArm eliminado (la animación de espada se descartó)");
+            }
 
             if (Object.FindAnyObjectByType<ComboSystem>() == null)
             {

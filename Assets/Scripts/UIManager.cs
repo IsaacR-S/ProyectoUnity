@@ -82,6 +82,26 @@ public class UIManager : MonoBehaviour
             gameOverKillText.text = "Enemigos eliminados: " + GameManager.Instance?.KillCount;
     }
 
+    // ── VICTORIA (reutiliza el panel de Game Over) ────────────────────────────
+    public void ShowWin()
+    {
+        if (gameOverPanel == null) return;
+        gameOverPanel.SetActive(true);
+
+        // Cambiar el título del panel (el primer texto que no sea el contador)
+        foreach (var t in gameOverPanel.GetComponentsInChildren<TMP_Text>(true))
+        {
+            if (t == gameOverKillText) continue;
+            t.text  = "¡VICTORIA!";
+            t.color = new Color(1f, 0.85f, 0.4f);   // dorado
+            break;
+        }
+
+        if (gameOverKillText != null)
+            gameOverKillText.text = "Completaste Candle Fury — Enemigos eliminados: "
+                                    + GameManager.Instance?.KillCount;
+    }
+
     // ── Botones del panel Game Over ───────────────────────────────────────────
     public void OnRetryButton()  => GameManager.Instance?.RestartGame();
     public void OnMenuButton()   => GameManager.Instance?.LoadMainMenu();
